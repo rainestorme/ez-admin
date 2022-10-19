@@ -26,6 +26,7 @@ net user username password /add
 net localgroup Administrators username /add
 ```
 20. Sign in to the account. If the system you ran this on has a domain used for accounts, type `.\` (note the backslash) followed by your username and your password as normal.
+21. (OPTIONAL) Once you're signed into your new account, you can restore the original Utilman.exe to avoid arousing suspicion. To do so, you can run the `restore.bat` file found within this repo (and also on the drive you copied the files to). Hop over to the drive in Explorer and double-click the file. It should automatically restore the backup.
 
 Congratulations. You've gotten admin access on a computer with just a few minutes of your precious time.
 
