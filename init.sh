@@ -18,11 +18,21 @@ read partition
 echo "Mounting partition..."
 mount $partition /mnt
 
-echo "Backing up and replacing sethc.exe..."
+echo "Backing up and replacing Utilman.exe..."
 pushd /mnt/Windows/system32
-  cp sethc.exe sethc.exe.bak
-  cp cmd.exe sethc.exe
+  cp Utilman.exe Utilman.exe.bak
+  cp cmd.exe Utilman.exe
 popd
+
+echo "Adding ez-restore.bat to System32..."
+pushd /mnt/Windows/system32
+  touch ez-restore.bat
+  echo "@echo off" > ez-restore.bat
+  echo "cd C:/Windows/system32" >> ez-restore.bat
+  echo "copy Utilman.exe.bak Utilman.exe" >> ez-restore.bat
+  echo "echo Finished restoring Utilman.exe!" >> ez-restore.bat
+popd
+
 echo "Unmounting partition..."
 umount $partition
 
