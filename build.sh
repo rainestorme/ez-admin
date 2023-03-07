@@ -11,6 +11,7 @@ rm -Rf bzImage
 rm -Rf initrd
 rm -Rf src
 rm -Rf initrd.img
+rm -Rf ez-admin.iso
 
 mkdir -p src
 cd src
