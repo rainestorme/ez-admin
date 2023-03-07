@@ -79,25 +79,7 @@ cd ..
 cd initrd
     echo "Performing final config..."
 
-    echo '#!/bin/bash' > init
-    echo 'dmesg -n 1' >> init
-    echo 'mount -t devtmpfs none /dev' >> init
-    echo 'mount -t proc none /proc' >> init
-    echo 'mount -t sysfs none /sys' >> init
-    echo 'echo "Welcome to ez-admin!"' >> init
-    echo 'echo "Printing partitions. Please enter a partition to mount and run ez-admin on."' >> init
-    echo 'mkdir -p /mnt' >> init
-    echo 'fdisk -l' >> init
-    echo 'echo "Please enter a partition: "' >> init
-    echo 'read partition' >> init
-    echo 'echo "Mounting partition..."' >> init
-    echo 'mount $partition /mnt'
-    echo 'echo "Backing up Utilman.exe..."' >> init
-    echo 'pushd /mnt/Windows/system32 && cp Utilman.exe Utilman-ez.bak' >> init
-    echo 'echo "Replacing Utilman.exe..."' >> init
-    echo 'cp cmd.exe Utilman.exe && popd' >> init
-    echo 'echo "Done! Rebooting..."' >> init
-    echo 'poweroff -f' >> init
+    cat init.sh > init # Copy init file over
 
     chmod -R 777 .
 
