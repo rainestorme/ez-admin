@@ -30,7 +30,8 @@ pushd /mnt/Windows/system32
   echo "@echo off" > ez-restore.bat
   echo "cd C:/Windows/system32" >> ez-restore.bat
   echo "copy Utilman.exe.bak Utilman.exe" >> ez-restore.bat
-  echo "echo Finished restoring Utilman.exe!" >> ez-restore.bat
+  echo "del /f ez-restore.bat" >> ez-restore.bat
+  echo "echo Finished restoring Utilman.exe and hiding the cleanup script!" >> ez-restore.bat
 popd
 
 echo "Unmounting partition..."
