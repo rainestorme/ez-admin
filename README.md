@@ -38,7 +38,7 @@ shutdown
 ```
 Close the cmd and the installer window, rebooting the PC. Unplug the USB drive and continue from the normal step from step 11.
 
-## Flashing your drive with Tiny10
+## Flashing your drive with ez-admin
 
 1. Download [RUFUS](https://github.com/pbatard/rufus/releases/download/v3.20/rufus-3.20.exe) and get a copy of `ez-admin.iso`.
 2. Run RUFUS and select the ez-admin ISO as the disk image. Click on START to begin. Keep all the settings at default and confirm.
