@@ -3,14 +3,6 @@ set -ex
 
 echo "Starting the build process..."
 
-# Clean up previous build
-echo "Cleaning up previous build..."
-rm -rf isoimage
-rm -rf linux-*
-rm -rf busybox-*
-rm -rf syslinux-*
-rm -rf minimal_linux_live.iso
-
 # Update versions
 echo "Updating versions..."
 KERNEL_VERSION=6.6.8
@@ -25,40 +17,57 @@ echo "Downloading files..."
 
 # Extract files
 echo "Extracting files..."
-tar -xvf kernel.tar.xz
-tar -xvf busybox.tar.bz2
-tar -xvf syslinux.tar.xz
+[ ! -d linux-${KERNEL_VERSION} ] && tar -xvf kernel.tar.xz
+[ ! -d busybox-${BUSYBOX_VERSION} ] && tar -xvf busybox.tar.bz2
+[ ! -d syslinux-${SYSLINUX_VERSION} ] && tar -xvf syslinux.tar.xz
 
 # Create isoimage directory
 echo "Creating isoimage directory..."
 mkdir isoimage
 
 # Build busybox
-echo "Building busybox..."
-cd busybox-${BUSYBOX_VERSION}
-    make distclean defconfig
-    sed -i "s|.*CONFIG_STATIC.*|CONFIG_STATIC=y|" .config
-    make busybox install
-    # Prepare init
-    echo "Preparing init..."
-    cd _install
-        rm -f linuxrc
-        mkdir dev proc sys
-        cp ../../init.sh init
-        chmod +x init
-        # Create rootfs.gz
-        echo "Creating rootfs.gz..."
-        find . | cpio -R root:root -H newc -o | gzip > ../../isoimage/rootfs.gz
+if [ ! -f isoimage/rootfs.gz ]; then
+    echo "Building busybox..."
+    cd busybox-${BUSYBOX_VERSION}
+        make distclean defconfig
+        sed -i "s|.*CONFIG_STATIC.*|CONFIG_STATIC=y|" .config
+        make busybox install
+        # Prepare init
+        echo "Preparing init..."
+        cd _install
+            rm -f linuxrc
+            mkdir dev proc sys
+            cp ../../init.sh init
+            chmod +x init
+            # Create rootfs.gz
+            echo "Creating rootfs.gz..."
+            find . | cpio -R root:root -H newc -o | gzip > ../../isoimage/rootfs.gz
+    cd ../..
+    else
+        rm -f isoimage/rootfs.gz
+        cd busybox-${BUSYBOX_VERSION}/_install
+            rm -f init
+            cp ../../init.sh init
+            chmod +x init
+            # Create rootfs.gz
+            echo "Creating rootfs.gz..."
+            find . | cpio -R root:root -H newc -o | gzip > ../../isoimage/rootfs.gz
+        cd ../..
+fi
 
 # Build kernel
-echo "Building kernel..."
-cd ../../linux-${KERNEL_VERSION}
-    make mrproper defconfig bzImage
-    cp arch/x86/boot/bzImage ../isoimage/kernel.gz
+if [ ! -f isoimage/kernel.gz ]; then
+    echo "Building kernel..."
+    cd linux-${KERNEL_VERSION}
+        make mrproper defconfig bzImage
+        cp arch/x86_64/boot/bzImage ../isoimage/kernel.gz
+    cd ..
+fi
 
 # Prepare isoimage
 echo "Preparing isoimage..."
-cd ../isoimage
+rm -rf ez-admin.iso
+cd isoimage
     cp ../syslinux-${SYSLINUX_VERSION}/bios/core/isolinux.bin .
     cp ../syslinux-${SYSLINUX_VERSION}/bios/com32/elflink/ldlinux/ldlinux.c32 .
     echo 'default kernel.gz initrd=rootfs.gz' > ./isolinux.cfg
@@ -66,17 +75,15 @@ cd ../isoimage
     echo "Creating iso..."
     xorriso \
     -as mkisofs \
-    -o ../minimal_linux_live.iso \
+    -o ../ez-admin.iso \
     -b isolinux.bin \
     -c boot.cat \
     -no-emul-boot \
     -boot-load-size 4 \
     -boot-info-table \
     ./
-
-# Return to original directory
-echo "Returning to original directory..."
 cd ..
+
 set +ex
 
 echo "Build process completed!"
