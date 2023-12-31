@@ -84,9 +84,11 @@ cd src
         ./configure --prefix=/usr --without-bash-malloc
         make -j$(nproc) || exit
         #make install DESTDIR=../initrd
-        make install DESTDIR=../../initrd
+        make install DESTDIR=../initrd
     cd ..
 cd ..
+
+mv src/initrd/usr ./initrd/usr
 
 cd initrd
     echo "Performing final config..."
