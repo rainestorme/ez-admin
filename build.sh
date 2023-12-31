@@ -83,7 +83,6 @@ cd src
     cd bash-$BASH_VERSION
         ./configure --prefix=/usr --without-bash-malloc
         make -j$(nproc) || exit
-        #make install DESTDIR=../initrd
         make install DESTDIR=../initrd
     cd ..
 cd ..
