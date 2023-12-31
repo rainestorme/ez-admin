@@ -23,7 +23,7 @@ echo "Extracting files..."
 
 # Create isoimage directory
 echo "Creating isoimage directory..."
-mkdir isoimage
+[ ! -d isoimage ] && mkdir isoimage
 
 # Build busybox
 if [ ! -f isoimage/rootfs.gz ]; then
