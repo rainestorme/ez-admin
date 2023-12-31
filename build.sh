@@ -98,7 +98,7 @@ cd initrd
     chmod -R 777 .
 
     echo "Packing initrd..."
-    find . | cpio -o -H newc > ../initrd.img
+    find . | cpio -o -H newc > ../initrd/boot/initrd.img
 cd ..
 
 if [ ! -f initrd.img ]; then
@@ -111,6 +111,7 @@ echo 'set timeout=10
 menuentry "ez-admin" {
     linux /boot/bzImage
     initrd /boot/initrd.img
+    init=/init
 }' > initrd/boot/grub/grub.cfg
 
 echo "Creating iso..."
