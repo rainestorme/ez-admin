@@ -11,10 +11,7 @@ rm -Rf src/linux-$LINUX_VERSION
 rm -Rf src/busybox-$BUSYBOX_VERSION
 rm -Rf src/bash-$BASH_VERSION
 rm -Rf src/initrd
-rm -Rf boot
-rm -Rf bzImage
 rm -Rf initrd
-rm -Rf initrd.img
 rm -Rf ez-admin.iso
 
 mkdir -p src
@@ -50,11 +47,15 @@ cd src
 
 cd ..
 
+mkdir -p initrd/boot/grub
 echo "Copying kernel..."
-cp src/linux-$LINUX_VERSION/arch/x86_64/boot/bzImage ./
+cp src/linux-$LINUX_VERSION/arch/x86_64/boot/bzImage initrd/boot/bzImage
+if [ ! -f initrd/boot/bzImage ]; then
+    echo "bzImage not found"
+    exit
+fi
 
 # initrd
-mkdir initrd
 cd initrd
 
     echo "Creating rootfs skeleton and installing busybox..."
@@ -97,8 +98,20 @@ cd initrd
     chmod -R 777 .
 
     echo "Packing initrd..."
-    find . | cpio -o -H newc > ../initrd.img
+    find . | cpio -o -H newc > ../initrd/boot/initrd.img
 cd ..
+
+if [ ! -f initrd/boot/initrd.img ]; then
+    echo "initrd.img not found"
+    exit
+fi
+
+# Create grub.cfg
+echo 'set timeout=10
+menuentry "ez-admin" {
+    linux /boot/bzImage
+    initrd /boot/initrd.img
+}' > initrd/boot/grub/grub.cfg
 
 echo "Creating iso..."
 
@@ -113,16 +126,4 @@ then
     exit
 fi
 
-# Check if the kernel image and initrd(rootfs) exist
-if [ ! -f bzImage ]; then
-    echo "bzImage not found"
-    exit
-fi
-if [ ! -d initrd ]; then
-    echo "initrd not found"
-    exit
-fi
-
-# Create the ISO image
-mkdir -p boot/grub
-grub-mkrescue -o ez-admin.iso ./boot ./bzImage ./initrd
+grub-mkrescue --compress=xz -o ez-admin.iso initrd
