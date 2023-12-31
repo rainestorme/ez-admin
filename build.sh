@@ -98,10 +98,10 @@ cd initrd
     chmod -R 777 .
 
     echo "Packing initrd..."
-    find . | cpio -o -H newc > ../initrd/boot/initrd.img
+    find . | cpio -o -H newc > ../initrd.img
 cd ..
 
-if [ ! -f initrd/boot/initrd.img ]; then
+if [ ! -f initrd.img ]; then
     echo "initrd.img not found"
     exit
 fi
