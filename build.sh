@@ -7,23 +7,20 @@ echo "Starting the build process..."
 echo "Updating versions..."
 KERNEL_VERSION=6.6.8
 BUSYBOX_VERSION=1.36.1
-SYSLINUX_VERSION=6.03
 
 # Download files if they do not exist
 echo "Downloading files..."
 [ ! -f kernel.tar.xz ] && wget -O kernel.tar.xz https://mirrors.edge.kernel.org/pub/linux/kernel/v6.x/linux-${KERNEL_VERSION}.tar.xz
 [ ! -f busybox.tar.bz2 ] && wget -O busybox.tar.bz2 https://busybox.net/downloads/busybox-${BUSYBOX_VERSION}.tar.bz2
-[ ! -f syslinux.tar.xz ] && wget -O syslinux.tar.xz https://mirrors.edge.kernel.org/pub/linux/utils/boot/syslinux/syslinux-${SYSLINUX_VERSION}.tar.xz
 
 # Extract files
 echo "Extracting files..."
 [ ! -d linux-${KERNEL_VERSION} ] && tar -xvf kernel.tar.xz
 [ ! -d busybox-${BUSYBOX_VERSION} ] && tar -xvf busybox.tar.bz2
-[ ! -d syslinux-${SYSLINUX_VERSION} ] && tar -xvf syslinux.tar.xz
 
 # Create isoimage directory
 echo "Creating isoimage directory..."
-[ ! -d isoimage ] && mkdir isoimage
+mkdir -p isoimage/boot/grub
 
 # Build busybox
 if [ ! -f isoimage/rootfs.gz ]; then
@@ -64,24 +61,29 @@ if [ ! -f isoimage/kernel.gz ]; then
     cd ..
 fi
 
+# Create grub.cfg
+echo "Creating grub.cfg..."
+echo 'set timeout=0
+menuentry "ez-admin" {
+    linux /kernel.gz
+    initrd /rootfs.gz
+}' > isoimage/boot/grub/grub.cfg
+
 # Prepare isoimage
 echo "Preparing isoimage..."
 rm -rf ez-admin.iso
 cd isoimage
-    cp ../syslinux-${SYSLINUX_VERSION}/bios/core/isolinux.bin .
-    cp ../syslinux-${SYSLINUX_VERSION}/bios/com32/elflink/ldlinux/ldlinux.c32 .
-    echo 'default kernel.gz initrd=rootfs.gz' > ./isolinux.cfg
+    # Create grub.cfg
+    echo "Creating grub.cfg..."
+    echo 'set timeout=5' > grub.cfg
+    echo 'set default=0' >> grub.cfg
+    echo 'menuentry "My Custom Linux" {' >> grub.cfg
+    echo '    linux /kernel.gz' >> grub.cfg
+    echo '    initrd /rootfs.gz' >> grub.cfg
+    echo '}' >> grub.cfg
     # Create iso
     echo "Creating iso..."
-    xorriso \
-    -as mkisofs \
-    -o ../ez-admin.iso \
-    -b isolinux.bin \
-    -c boot.cat \
-    -no-emul-boot \
-    -boot-load-size 4 \
-    -boot-info-table \
-    ./
+    grub-mkrescue -o ../ez-admin.iso .
 cd ..
 
 set +ex
