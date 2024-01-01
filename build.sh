@@ -64,6 +64,7 @@ fi
 # Create grub.cfg
 echo "Creating grub.cfg..."
 echo 'set timeout=0
+set default=0
 menuentry "ez-admin" {
     linux /kernel.gz
     initrd /rootfs.gz
@@ -73,14 +74,6 @@ menuentry "ez-admin" {
 echo "Preparing isoimage..."
 rm -rf ez-admin.iso
 cd isoimage
-    # Create grub.cfg
-    echo "Creating grub.cfg..."
-    echo 'set timeout=5' > grub.cfg
-    echo 'set default=0' >> grub.cfg
-    echo 'menuentry "My Custom Linux" {' >> grub.cfg
-    echo '    linux /kernel.gz' >> grub.cfg
-    echo '    initrd /rootfs.gz' >> grub.cfg
-    echo '}' >> grub.cfg
     # Create iso
     echo "Creating iso..."
     grub-mkrescue -o ../ez-admin.iso .
