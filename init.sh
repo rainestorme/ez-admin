@@ -6,7 +6,6 @@ dmesg -n 1
 mount -t devtmpfs none /dev || { echo "Failed to mount /dev"; exit 1; }
 mount -t proc none /proc || { echo "Failed to mount /proc"; exit 1; }
 mount -t sysfs none /sys || { echo "Failed to mount /sys"; exit 1; }
-setsid cttyhack /bin/sh || { echo "Failed to set cttyhack"; exit 1; }
 echo "Done!"
 echo && echo
 
