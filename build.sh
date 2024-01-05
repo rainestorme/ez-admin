@@ -23,7 +23,7 @@ echo "Creating isoimage directory..."
 mkdir -p isoimage/boot/grub
 
 # Build busybox
-if [ ! -f isoimage/rootfs.gz ]; then
+if [ ! -f isoimage/boot/rootfs.gz ]; then
     echo "Building busybox..."
     cd busybox-${BUSYBOX_VERSION}
         make distclean defconfig
@@ -38,7 +38,7 @@ if [ ! -f isoimage/rootfs.gz ]; then
             chmod +x init
             # Create rootfs.gz
             echo "Creating rootfs.gz..."
-            find . | cpio -R root:root -H newc -o | gzip > ../../isoimage/rootfs.gz
+            find . | cpio -R root:root -H newc -o | gzip > ../../isoimage/boot/rootfs.gz
     cd ../..
     else
         rm -f isoimage/rootfs.gz
@@ -48,16 +48,16 @@ if [ ! -f isoimage/rootfs.gz ]; then
             chmod +x init
             # Create rootfs.gz
             echo "Creating rootfs.gz..."
-            find . | cpio -R root:root -H newc -o | gzip > ../../isoimage/rootfs.gz
+            find . | cpio -R root:root -H newc -o | gzip > ../../isoimage/boot/rootfs.gz
         cd ../..
 fi
 
 # Build kernel
-if [ ! -f isoimage/kernel.gz ]; then
+if [ ! -f isoimage/boot/kernel.gz ]; then
     echo "Building kernel..."
     cd linux-${KERNEL_VERSION}
         make mrproper defconfig bzImage
-        cp arch/x86_64/boot/bzImage ../isoimage/kernel.gz
+        cp arch/x86_64/boot/bzImage ../isoimage/boot/kernel.gz
     cd ..
 fi
 
@@ -65,9 +65,24 @@ fi
 echo "Creating grub.cfg..."
 echo 'set timeout=0
 set default=0
-menuentry "ez-admin" {
-    linux /kernel.gz
-    initrd /rootfs.gz
+
+# Load EFI video drivers. This device is EFI so keep the
+# video mode while booting the linux kernel.
+insmod efi_gop
+insmod font
+if loadfont /boot/grub/fonts/unicode.pf2
+then
+        insmod gfxterm
+        set gfxmode=auto
+        set gfxpayload=keep
+        terminal_output gfxterm
+fi
+
+menuentry "ez-admin" --class os {
+    insmod gzio
+    insmod part_msdos
+    linux /boot/kernel.gz
+    initrd /boot/rootfs.gz
 }' > isoimage/boot/grub/grub.cfg
 
 # Prepare isoimage
