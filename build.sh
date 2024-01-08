@@ -1,117 +1,99 @@
 #!/bin/bash
+set -ex
 
-BUSYBOX_VERSION=1.32.1
-LINUX_VERSION=5.15.6
-BASH_VERSION=5.2.15
+echo "Starting the build process..."
 
-echo "Building for Busybox $BUSYBOX_VERSION, Linux $LINUX_VERSION, and Bash $BASH_VERSION"
+# Update versions
+echo "Updating versions..."
+KERNEL_VERSION=6.6.8
+BUSYBOX_VERSION=1.36.1
 
-echo "Cleaning up..."
-rm -Rf bzImage
-rm -Rf initrd
-rm -Rf src
-rm -Rf initrd.img
-rm -Rf ez-admin.iso
+# Download files if they do not exist
+echo "Downloading files..."
+[ ! -f kernel.tar.xz ] && wget -O kernel.tar.xz https://mirrors.edge.kernel.org/pub/linux/kernel/v6.x/linux-${KERNEL_VERSION}.tar.xz
+[ ! -f busybox.tar.bz2 ] && wget -O busybox.tar.bz2 https://busybox.net/downloads/busybox-${BUSYBOX_VERSION}.tar.bz2
 
-mkdir -p src
-cd src
-    
-    # Kernel
-    echo "Downloading kernel $LINUX_VERSION..."
-    LINUX_MAJOR=$(echo $LINUX_VERSION | sed 's/\([0-9]*\)[^0-9].*/\1/')
-    wget https://mirrors.edge.kernel.org/pub/linux/kernel/v$LINUX_MAJOR.x/linux-$LINUX_VERSION.tar.xz
-    echo "Extracting kernel..."
-    tar -xf linux-$LINUX_VERSION.tar.xz
-    echo "Building kernel..."
-    cd linux-$LINUX_VERSION
-        make defconfig
-        make -j$(nproc) || exit
-    cd ..
+# Extract files
+echo "Extracting files..."
+[ ! -d linux-${KERNEL_VERSION} ] && tar -xvf kernel.tar.xz
+[ ! -d busybox-${BUSYBOX_VERSION} ] && tar -xvf busybox.tar.bz2
 
-    # Busybox
-    echo "Downloading busybox $BUSYBOX_VERSION..."
-    wget https://www.busybox.net/downloads/busybox-$BUSYBOX_VERSION.tar.bz2  
-    echo "Extracting busybox..."  
-    tar -xf busybox-$BUSYBOX_VERSION.tar.bz2
+# Create isoimage directory
+echo "Creating isoimage directory..."
+mkdir -p isoimage/boot/grub
+
+# Build busybox
+if [ ! -f isoimage/boot/rootfs.gz ]; then
     echo "Building busybox..."
-    cd busybox-$BUSYBOX_VERSION
-        make defconfig
-        sed 's/^.*CONFIG_STATIC[^_].*$/CONFIG_STATIC=y/g' -i .config
-        make -j$(nproc) || exit
+    cd busybox-${BUSYBOX_VERSION}
+        make distclean defconfig
+        sed -i "s|.*CONFIG_STATIC.*|CONFIG_STATIC=y|" .config
+        make busybox install
+        # Prepare init
+        echo "Preparing init..."
+        cd _install
+            rm -f linuxrc
+            mkdir dev proc sys
+            cp ../../init.sh init
+            chmod +x init
+            # Create rootfs.gz
+            echo "Creating rootfs.gz..."
+            find . | cpio -R root:root -H newc -o | gzip > ../../isoimage/boot/rootfs.gz
+    cd ../..
+    else
+        rm -f isoimage/rootfs.gz
+        cd busybox-${BUSYBOX_VERSION}/_install
+            rm -f init
+            cp ../../init.sh init
+            chmod +x init
+            # Create rootfs.gz
+            echo "Creating rootfs.gz..."
+            find . | cpio -R root:root -H newc -o | gzip > ../../isoimage/boot/rootfs.gz
+        cd ../..
+fi
+
+# Build kernel
+if [ ! -f isoimage/boot/kernel.gz ]; then
+    echo "Building kernel..."
+    cd linux-${KERNEL_VERSION}
+        make mrproper defconfig bzImage
+        cp arch/x86_64/boot/bzImage ../isoimage/boot/kernel.gz
     cd ..
+fi
 
-cd ..
+# Create grub.cfg
+echo "Creating grub.cfg..."
+echo 'set timeout=0
+set default=0
 
-echo "Copying kernel..."
-cp src/linux-$LINUX_VERSION/arch/x86_64/boot/bzImage ./
-
-# initrd
-mkdir initrd
-cd initrd
-
-    echo "Creating rootfs skeleton and installing busybox..."
-    mkdir -p bin dev proc sys boot
-    cd bin
-        cp ../../src/busybox-$BUSYBOX_VERSION/busybox ./
-
-        for prog in $(./busybox --list); do
-            # Skip bash
-            if [ "$prog" = "bash" ]; then
-                continue
-            fi
-            ln -s /bin/busybox ./$prog
-        done
-    cd ..
-cd ..
-
-cd src
-    echo "Downloading bash $BASH_VERSION..."
-    wget https://ftp.gnu.org/gnu/bash/bash-$BASH_VERSION.tar.gz
-    echo "Extracting bash..."
-    tar -xf bash-$BASH_VERSION.tar.gz
-    echo "Building bash..."
-    cd bash-$BASH_VERSION
-        ./configure --prefix=/usr --without-bash-malloc
-        make -j$(nproc) || exit
-        make install DESTDIR=../initrd
-    cd ..
-cd ..
-
-cd initrd
-    echo "Performing final config..."
-
-    cat init.sh > init # Copy init file over
-
-    chmod -R 777 .
-
-    echo "Packing initrd..."
-    find . | cpio -o -H newc > ../initrd.img
-cd ..
-
-echo "Creating iso..."
-
-if ! command -v xorriso &> /dev/null
+# Load EFI video drivers. This device is EFI so keep the
+# video mode while booting the linux kernel.
+insmod efi_gop
+insmod font
+if loadfont /boot/grub/fonts/unicode.pf2
 then
-    echo "xorriso could not be found"
-    exit
-fi
-if ! command -v grub-mkrescue &> /dev/null
-then
-    echo "grub-mkrescue could not be found"
-    exit
+        insmod gfxterm
+        set gfxmode=auto
+        set gfxpayload=keep
+        terminal_output gfxterm
 fi
 
-# Check if the kernel image and initrd(rootfs) exist
-if [ ! -f bzImage ]; then
-    echo "bzImage not found"
-    exit
-fi
-if [ ! -d initrd ]; then
-    echo "initrd not found"
-    exit
-fi
+menuentry "ez-admin" --class os {
+    insmod gzio
+    insmod part_msdos
+    linux /boot/kernel.gz
+    initrd /boot/rootfs.gz
+}' > isoimage/boot/grub/grub.cfg
 
-# Create the ISO image
-xorriso -as mkisofs -iso-level 3 -full-iso9660-filenames -volid "ez-admin" -eltorito-boot boot/grub/eltorito.img -no-emul-boot -boot-load-size 4 -boot-info-table -eltorito-catalog boot/grub/boot.cat -output ez-admin.iso ./boot ./bzImage ./initrd
+# Prepare isoimage
+echo "Preparing isoimage..."
+rm -rf ez-admin.iso
+cd isoimage
+    # Create iso
+    echo "Creating iso..."
+    grub-mkrescue -o ../ez-admin.iso .
+cd ..
 
-echo "Done!"
+set +ex
+
+echo "Build process completed!"
